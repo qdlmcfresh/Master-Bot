@@ -41,7 +41,7 @@ module.exports = class PassMusicTriviaCommand extends Command {
         message.react('☑');
         const embed = new MessageEmbed()
             .setColor('#ff7373')
-            .setTitle(`${size}/${} voted to skip this song.`);
+            .setTitle(`${size}/${playerCount} voted to skip this song.`);
         message.channel.send(embed);
         if (size >= playerCount) {
             if (message.guild.triviaData.collector) {
