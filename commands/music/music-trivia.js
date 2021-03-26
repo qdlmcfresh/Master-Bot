@@ -88,13 +88,10 @@ module.exports = class MusicTriviaCommand extends Command {
             if (!message.guild.triviaData.triviaScore.has(msg.author.username))
               return;
             if (msg.content.startsWith(prefix)) {
-              if (msg.content === '%pass') {
-                msg.react('☑');
-                passCounter++;
-                if (passCounter >= 0.5 * message.guild.triviaData.triviaScore.size) {
-                  return collector.stop();
-                }
-              }
+              return;
+            }
+            if (message.guild.triviaData.triviaPass.size >= 0.5 * message.guild.triviaData.triviaScore.size) {
+              return collector.stop();
             }
             var userInput = msg.content.toLowerCase()
               .replace(REGEX_DASH, '')

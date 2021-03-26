@@ -23,7 +23,8 @@ Structures.extend('Guild', function (Guild) {
         isTriviaRunning: false,
         wasTriviaEndCalled: false,
         triviaQueue: [],
-        triviaScore: new Map()
+        triviaScore: new Map(),
+        triviaPass: new Set()
       };
     }
     resetMusicDataOnError() {
