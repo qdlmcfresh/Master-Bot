@@ -6,6 +6,7 @@ module.exports = class StopMusicTriviaCommand extends Command {
       name: 'stop-trivia',
       aliases: [
         'stop-music-trivia',
+        'skip-trivia',
         'end-trivia',
         'stop-trivia'
       ],
@@ -33,17 +34,11 @@ module.exports = class StopMusicTriviaCommand extends Command {
       );
       return;
     }
-    msg.react('☑');
-    member.guild.triviaData.passCounter
-    if (passCounter >= 0.5 * message.guild.triviaData.triviaScore.size) {
-      return collector.stop();
-    }
-  }
 
-  message.guild.triviaData.triviaQueue.length = 0;
-  message.guild.triviaData.wasTriviaEndCalled = true;
-  message.guild.triviaData.triviaScore.clear();
-  message.guild.musicData.songDispatcher.end();
-  return;
-}
+    message.guild.triviaData.triviaQueue.length = 0;
+    message.guild.triviaData.wasTriviaEndCalled = true;
+    message.guild.triviaData.triviaScore.clear();
+    message.guild.musicData.songDispatcher.end();
+    return;
+  }
 };
