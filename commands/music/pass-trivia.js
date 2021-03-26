@@ -37,7 +37,7 @@ module.exports = class PassMusicTriviaCommand extends Command {
         message.guild.triviaData.triviaPass.add(message.author.id);
         message.react('☑');
         if (message.guild.triviaData.triviaPass.size >= message.guild.triviaData.triviaScore.size * 0.5) {
-            if (message.guild.tirviaData.collector) {
+            if (message.guild.triviaData.collector) {
                 console.log("Trying to stop collector");
                 message.guild.triviaData.collector.stop();
             }
