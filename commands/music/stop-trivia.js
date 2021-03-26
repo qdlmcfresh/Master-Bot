@@ -6,7 +6,6 @@ module.exports = class StopMusicTriviaCommand extends Command {
       name: 'stop-trivia',
       aliases: [
         'stop-music-trivia',
-        'skip-trivia',
         'end-trivia',
         'stop-trivia'
       ],
