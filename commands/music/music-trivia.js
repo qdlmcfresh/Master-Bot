@@ -45,12 +45,13 @@ module.exports = class MusicTriviaCommand extends Command {
 
   static async playQuizSong(queue, message) {
     var classThis = this;
-    message.member.voice.channel.join().then(function(connection) {
+    var passCounter = 0;
+    message.member.voice.channel.join().then(function (connection) {
       //console.log("playQuizSongStart:\n\n");
       //queue.forEach(element => console.log(element.singer + ":" + element.title + ":" + element.url));
       const dispatcher = connection
         .play(queue[0].url)
-        .on('start', function() {
+        .on('start', function () {
           console.log('Playing: ' + queue[0].singer + ': ' + queue[0].title + ' ' + queue[0].url);
           message.guild.musicData.songDispatcher = dispatcher;
           if (!db.get(`${message.guild.id}.serverSettings.volume`))
@@ -86,7 +87,15 @@ module.exports = class MusicTriviaCommand extends Command {
           collector.on('collect', msg => {
             if (!message.guild.triviaData.triviaScore.has(msg.author.username))
               return;
-            if (msg.content.startsWith(prefix)) return;
+            if (msg.content.startsWith(prefix)) {
+              if (msg.content === '%pass') {
+                msg.react('☑');
+                passCounter++;
+                if (passCounter >= 0.5 * message.guild.triviaData.triviaScore.size) {
+                  return collector.stop();
+                }
+              }
+            }
             var userInput = msg.content.toLowerCase()
               .replace(REGEX_DASH, '')
               .replace(REGEX_PARENTHESES, '')
@@ -137,8 +146,8 @@ module.exports = class MusicTriviaCommand extends Command {
                 return collector.stop();
               }
             } else if (MusicTriviaCommand.levenshtein(userInput, trackArtist + ' ' + trackTitle) <= MAX_DISTANCE
-                        ||
-                      MusicTriviaCommand.levenshtein(userInput, trackTitle + ' ' + trackArtist) <= MAX_DISTANCE
+              ||
+              MusicTriviaCommand.levenshtein(userInput, trackTitle + ' ' + trackArtist) <= MAX_DISTANCE
             ) {
               if ((songSingerFound && !songNameFound) || (songNameFound && !songSingerFound)) {
                 message.guild.triviaData.triviaScore.set(
@@ -157,7 +166,7 @@ module.exports = class MusicTriviaCommand extends Command {
               return msg.react('❌');
             }
           });
-          collector.on('end', function() {
+          collector.on('end', function () {
             /*
             The reason for this if statement is that we don't want to get an
             empty embed returned via chat by the bot if end-trivia command was called
@@ -168,7 +177,7 @@ module.exports = class MusicTriviaCommand extends Command {
             }
 
             const sortedScoreMap = new Map(
-              [...message.guild.triviaData.triviaScore.entries()].sort(function(
+              [...message.guild.triviaData.triviaScore.entries()].sort(function (
                 a,
                 b
               ) {
@@ -194,7 +203,7 @@ module.exports = class MusicTriviaCommand extends Command {
             return;
           });
         })
-        .on('error', async function(e) {
+        .on('error', async function (e) {
           message.reply(':x: Could not play that song!');
           console.log(e);
           if (queue.length > 1) {
@@ -204,7 +213,7 @@ module.exports = class MusicTriviaCommand extends Command {
             return;
           }
           const sortedScoreMap = new Map(
-            [...message.guild.triviaData.triviaScore.entries()].sort(function(
+            [...message.guild.triviaData.triviaScore.entries()].sort(function (
               a,
               b
             ) {
@@ -225,7 +234,7 @@ module.exports = class MusicTriviaCommand extends Command {
           message.guild.me.voice.channel.leave();
           return;
         })
-        .on('finish', function() {
+        .on('finish', function () {
           if (queue.length >= 1) {
             //console.log("playQuizSongFinish:\n\n");
             //queue.forEach(element => console.log(element.singer + ":" + element.title + ":" + element.url));
@@ -239,7 +248,7 @@ module.exports = class MusicTriviaCommand extends Command {
               return;
             }
             const sortedScoreMap = new Map(
-              [...message.guild.triviaData.triviaScore.entries()].sort(function(
+              [...message.guild.triviaData.triviaScore.entries()].sort(function (
                 a,
                 b
               ) {
@@ -299,7 +308,7 @@ module.exports = class MusicTriviaCommand extends Command {
 
   // https://www.w3resource.com/javascript-exercises/javascript-string-exercise-9.php
   static capitalize_Words(str) {
-    return str.replace(/\w\S*/g, function(txt) {
+    return str.replace(/\w\S*/g, function (txt) {
       return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     });
   }
