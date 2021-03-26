@@ -38,9 +38,8 @@ module.exports = class PassMusicTriviaCommand extends Command {
         message.react('☑');
         const embed = new MessageEmbed()
             .setColor('#ff7373')
-            .setTitle(`${message.guild.triviaData.triviaPass.size}/ ${int(message.guild.triviaData.triviaPass.size * 0.5)}`);
+            .setTitle(`${message.guild.triviaData.triviaPass.size}/ ${Math.trunc(message.guild.triviaData.triviaPass.size * 0.5)}`);
         message.channel.send(embed);
         return;
-
     }
 };
