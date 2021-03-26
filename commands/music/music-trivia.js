@@ -46,6 +46,7 @@ module.exports = class MusicTriviaCommand extends Command {
   static async playQuizSong(queue, message) {
     var classThis = this;
     var passCounter = 0;
+    message.guild.triviaData.triviaPass.clear();
     message.member.voice.channel.join().then(function (connection) {
       //console.log("playQuizSongStart:\n\n");
       //queue.forEach(element => console.log(element.singer + ":" + element.title + ":" + element.url));

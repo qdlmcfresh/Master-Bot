@@ -35,6 +35,10 @@ module.exports = class PassMusicTriviaCommand extends Command {
 
         message.guild.triviaData.triviaPass.add(message.author.id);
         message.react('☑');
+        const embed = new MessageEmbed()
+            .setColor('#ff7373')
+            .setTitle(`${message.guild.triviaData.triviaPass.size}/ ${int(message.guild.triviaData.triviaPass.size * 0.5)}`);
         return;
+        message.channel.send(embed);
     }
 };
