@@ -72,6 +72,7 @@ module.exports = class MusicTriviaCommand extends Command {
           const collector = message.channel.createMessageCollector(filter, {
             time: 28000
           });
+          message.guild.triviaData.collector = collector;
 
           var trackTitle = queue[0].title
             .split('feat.')[0]
@@ -90,9 +91,6 @@ module.exports = class MusicTriviaCommand extends Command {
               return;
             if (msg.content.startsWith(prefix)) {
               return;
-            }
-            if (message.guild.triviaData.triviaPass.size >= 0.5 * message.guild.triviaData.triviaScore.size) {
-              return collector.stop();
             }
             var userInput = msg.content.toLowerCase()
               .replace(REGEX_DASH, '')

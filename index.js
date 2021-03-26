@@ -24,7 +24,8 @@ Structures.extend('Guild', function (Guild) {
         wasTriviaEndCalled: false,
         triviaQueue: [],
         triviaScore: new Map(),
-        triviaPass: new Set()
+        triviaPass: new Set(),
+        collector: null
       };
     }
     resetMusicDataOnError() {

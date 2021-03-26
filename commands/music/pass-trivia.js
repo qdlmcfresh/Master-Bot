@@ -1,5 +1,5 @@
+const Discord = require('discord.js');
 const { Command } = require('discord.js-commando');
-const { MessageEmbed } = require('discord.js');
 
 module.exports = class PassMusicTriviaCommand extends Command {
     constructor(client) {
@@ -36,10 +36,11 @@ module.exports = class PassMusicTriviaCommand extends Command {
 
         message.guild.triviaData.triviaPass.add(message.author.id);
         message.react('☑');
-        const embed = new MessageEmbed()
-            .setColor('#ff7373')
-            .setTitle(`${message.guild.triviaData.triviaPass.size}/ ${Math.trunc(message.guild.triviaData.triviaPass.size * 0.5)}`);
-        message.channel.send(embed);
+        if (message.guild.triviaData.triviaPass.size > + message.guild.triviaData.triviaScore.size * 0.5) {
+            if (message.guild.tirviaData.collector) {
+                message.guild.triviaData.collector.stop();
+            }
+        }
         return;
     }
 };
