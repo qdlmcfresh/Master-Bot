@@ -1,5 +1,6 @@
 const Discord = require('discord.js');
 const { Command } = require('discord.js-commando');
+const { MessageEmbed } = require('discord.js');
 
 module.exports = class PassMusicTriviaCommand extends Command {
     constructor(client) {
@@ -35,13 +36,20 @@ module.exports = class PassMusicTriviaCommand extends Command {
         }
 
         message.guild.triviaData.triviaPass.add(message.author.id);
+        var size = message.guild.triviaData.triviaPass.size;
+        var playerCount = Math.trunc(message.guild.triviaData.triviaScore.size * 0.5);
         message.react('☑');
-        if (message.guild.triviaData.triviaPass.size >= message.guild.triviaData.triviaScore.size * 0.5) {
+        const embed = new MessageEmbed()
+            .setColor('#ff7373')
+            .setTitle(`${size}/${} voted to skip this song.`);
+        message.channel.send(embed);
+        if (size >= playerCount) {
             if (message.guild.triviaData.collector) {
                 console.log("Trying to stop collector");
                 message.guild.triviaData.collector.stop();
             }
         }
+
         return;
     }
 };
