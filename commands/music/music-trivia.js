@@ -121,7 +121,7 @@ module.exports = class MusicTriviaCommand extends Command {
               }
             }
             // if user guessed singer
-            else if (userInput === trackArtist || MusicTriviaCommand.levenshtein(userInput, trackTitle) <= MAX_DISTANCE) {
+            else if (userInput === trackArtist || MusicTriviaCommand.levenshtein(userInput, trackArtist) <= MAX_DISTANCE) {
               if (songSingerFound) return;
               songSingerFound = true;
               userWhoFoundArtist = msg.author.username;
@@ -318,9 +318,9 @@ module.exports = class MusicTriviaCommand extends Command {
     }
 
     message.addFields(
-      { name: "Placement", value: placements, inline: true},
-      { name: "User", value: names, inline: true},
-      { name: "Points", value: points, inline: true}
+      { name: "Placement", value: placements, inline: true },
+      { name: "User", value: names, inline: true },
+      { name: "Points", value: points, inline: true }
     );
   }
 
