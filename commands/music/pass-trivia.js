@@ -1,4 +1,5 @@
 const { Command } = require('discord.js-commando');
+const { MessageEmbed } = require('discord.js');
 
 module.exports = class PassMusicTriviaCommand extends Command {
     constructor(client) {
@@ -38,7 +39,8 @@ module.exports = class PassMusicTriviaCommand extends Command {
         const embed = new MessageEmbed()
             .setColor('#ff7373')
             .setTitle(`${message.guild.triviaData.triviaPass.size}/ ${int(message.guild.triviaData.triviaPass.size * 0.5)}`);
-        return;
         message.channel.send(embed);
+        return;
+
     }
 };
