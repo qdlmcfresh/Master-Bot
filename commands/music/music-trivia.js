@@ -3,7 +3,7 @@ const { Command } = require('discord.js-commando');
 const { MessageEmbed } = require('discord.js');
 const fs = require('fs');
 const db = require('quick.db');
-const { prefix, spotify_secret, spotify_clientid } = require('../../config.json');
+const { prefix, spotifySecret, spotifyClientId } = require('../../config.json');
 const Spotify = require('spotify-api.js');
 const sp_client = new Spotify.Client();
 const MAX_DISTANCE = 3;
@@ -358,19 +358,19 @@ module.exports = class MusicTriviaCommand extends Command {
     message.guild.triviaData.isTriviaRunning = true;
     message.guild.triviaData.triviaQueue = [];
 
-    await sp_client.login(spotify_clientid, spotify_secret);
+    await sp_client.login(spotifyClientId, spotifySecret);
     const regexp = /\/playlist\/(.+)\?/;
     playlist = playlist.match(regexp)[1];
     if (!playlist) {
       message.reply('Invalid playlist!');
       return;
     }
-    const sp_playlist = await sp_client.playlists.get(playlist);
-    var tempTracks = await sp_playlist.getTracks({ offset: 0 });
+    const spotifyPlaylist = await sp_client.playlists.get(playlist);
+    var tempTracks = await spotifyPlaylist.getTracks({ offset: 0 });
     let trackItems = tempTracks.items;
     if (tempTracks.total > tempTracks.limit) {
       while (trackItems.length < tempTracks.total) {
-        tempTracks = await sp_playlist.getTracks({ offset: trackItems.length });
+        tempTracks = await spotifyPlaylist.getTracks({ offset: trackItems.length });
         trackItems = trackItems.concat(tempTracks.items);
       }
     }
