@@ -186,7 +186,7 @@ module.exports = class MusicTriviaCommand extends Command {
             const embed = new MessageEmbed()
               .setColor('#ff7373')
               .setTitle(`:musical_note: The song was:\n ${song}`)
-              .setThumbnail(queue[0].image)
+              .setThumbnail(queue[0].image);
             classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()))
 
             message.channel.send(embed);
