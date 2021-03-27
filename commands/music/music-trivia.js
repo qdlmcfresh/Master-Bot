@@ -378,25 +378,24 @@ module.exports = class MusicTriviaCommand extends Command {
       return;
     }
     const sp_playlist = await sp_client.playlists.get(playlist);
-    const tracks = await (await sp_playlist.getTracks()).items;
-    const infoEmbed = new MessageEmbed()
-      .setColor('#ff7373')
-      .setTitle(':notes: Starting Music Quiz!')
-      .setDescription(
-        `:notes: Get ready! There are ${numberOfSongs} songs, you have 30 seconds to guess either the singer/band or the name of the song. Good luck!
-        You can end the trivia at any point by using the ${prefix}end-trivia command!`
-      );
-    message.channel.send(infoEmbed);
+    var tempTracks = await sp_playlist.getTracks({ offset: 0 });
+    let trackItems = tempTracks.items;
+    if (tempTracks.total > tempTracks.limit) {
+      while (trackItems.length < tempTracks.total) {
+        tempTracks = await sp_playlist.getTracks({ offset: trackItems.length });
+        trackItems = trackItems.concat(tempTracks.items);
+      }
+    }
+
     var songMap = new Map();
     for (let i = 0; i < numberOfSongs; i++) {
-      var track = tracks[Math.floor(Math.random() * tracks.length)].track;
+      var track = trackItems[Math.floor(Math.random() * trackItems.length)].track;
       if (songMap.has(track.id)) {
         i--;
         continue;
       }
       if (!track.previewUrl || !track.artists[0].name || !track.name) {
         i--;
-        //console.log("Not adding: " + track.name);
         continue;
       }
       var imageLink = await track.album.images[2].url;
@@ -407,11 +406,17 @@ module.exports = class MusicTriviaCommand extends Command {
         image: imageLink,
         voiceChannel
       };
-
       console.log(song.singer + ': ' + song.title);
       songMap.set(track.id, song);
-
     }
+    const infoEmbed = new MessageEmbed()
+      .setColor('#ff7373')
+      .setTitle(':notes: Starting Music Quiz!')
+      .setDescription(
+        `:notes: Get ready! There are ${numberOfSongs} songs, you have 30 seconds to guess either the singer/band or the name of the song. Good luck!
+      You can end the trivia at any point by using the ${prefix}end-trivia command!`
+      );
+    message.channel.send(infoEmbed);
     message.guild.triviaData.triviaQueue = Array.from(songMap.values());
     const channelInfo = Array.from(
       message.member.voice.channel.members.entries()
