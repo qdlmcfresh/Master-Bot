@@ -37,8 +37,7 @@ module.exports = class PassMusicTriviaCommand extends Command {
 
         message.guild.triviaData.triviaPass.add(message.author.id);
         var size = message.guild.triviaData.triviaPass.size;
-        var playerCount = Math.trunc(message.guild.triviaData.triviaScore.size * 0.5);
-        message.react('☑');
+        var playerCount = Math.trunc(message.guild.triviaData.triviaScore.size * 0.5) + 1;
         const embed = new MessageEmbed()
             .setColor('#ff7373')
             .setTitle(`${size}/${playerCount} voted to skip this song.`);
