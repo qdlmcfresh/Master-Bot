@@ -399,7 +399,7 @@ module.exports = class MusicTriviaCommand extends Command {
         //console.log("Not adding: " + track.name);
         continue;
       }
-      var imageLink = await track.album.images[2];
+      var imageLink = await track.album.images[2].url;
       const song = {
         url: track.previewUrl,
         singer: track.artists[0].name,
