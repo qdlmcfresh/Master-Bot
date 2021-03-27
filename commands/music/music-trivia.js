@@ -187,7 +187,7 @@ module.exports = class MusicTriviaCommand extends Command {
               .setColor('#ff7373')
               .setTitle(`:musical_note: The song was:\n ${song}`)
               .setThumbnail(queue[0].image);
-            classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()))
+            classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
 
             message.channel.send(embed);
             queue.shift();
@@ -216,7 +216,7 @@ module.exports = class MusicTriviaCommand extends Command {
           const embed = new MessageEmbed()
             .setColor('#ff7373')
             .setTitle(`Music Quiz Results`)
-          classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()))
+          classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
           message.channel.send(embed);
           message.guild.musicData.isPlaying = false;
           message.guild.triviaData.isTriviaRunning = false;
@@ -249,7 +249,7 @@ module.exports = class MusicTriviaCommand extends Command {
             const embed = new MessageEmbed()
               .setColor('#ff7373')
               .setTitle(`Music Quiz Results`);
-            classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()))
+            classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
             message.channel.send(embed);
             message.guild.musicData.isPlaying = false;
             message.guild.triviaData.isTriviaRunning = false;
@@ -306,13 +306,13 @@ module.exports = class MusicTriviaCommand extends Command {
 
     for (let i = 0; i < arr.length; i++) {
       if (i === 0) {
-        placements = '#' + (i + 1)
-        names = arr[i][0]
-        points = arr[i][1]
+        placements = '#' + (i + 1);
+        names = arr[i][0];
+        points = arr[i][1];
       } else {
-        placements += '\n#' + (i + 1)
-        names += '\n' + arr[i][0]
-        points += '\n' + arr[i][1]
+        placements += '\n#' + (i + 1);
+        names += '\n' + arr[i][0];
+        points += '\n' + arr[i][1];
       }
     }
 
