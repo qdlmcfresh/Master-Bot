@@ -48,8 +48,6 @@ module.exports = class MusicTriviaCommand extends Command {
     var passCounter = 0;
     message.guild.triviaData.triviaPass.clear();
     message.member.voice.channel.join().then(function (connection) {
-      //console.log("playQuizSongStart:\n\n");
-      //queue.forEach(element => console.log(element.singer + ":" + element.title + ":" + element.url));
       const dispatcher = connection
         .play(queue[0].url)
         .on('start', function () {
@@ -191,7 +189,6 @@ module.exports = class MusicTriviaCommand extends Command {
 
             message.channel.send(embed);
             queue.shift();
-            console.log('Shift in Collector:End');
             dispatcher.end();
             return;
           });
@@ -201,7 +198,6 @@ module.exports = class MusicTriviaCommand extends Command {
           console.log(e);
           if (queue.length > 1) {
             queue.shift();
-            console.log('Shift in Error');
             classThis.playQuizSong(queue, message);
             return;
           }
@@ -227,8 +223,6 @@ module.exports = class MusicTriviaCommand extends Command {
         })
         .on('finish', function () {
           if (queue.length >= 1) {
-            //console.log("playQuizSongFinish:\n\n");
-            //queue.forEach(element => console.log(element.singer + ":" + element.title + ":" + element.url));
             return classThis.playQuizSong(queue, message);
           } else {
             if (message.guild.triviaData.wasTriviaEndCalled) {
@@ -365,11 +359,6 @@ module.exports = class MusicTriviaCommand extends Command {
     message.guild.triviaData.isTriviaRunning = true;
     message.guild.triviaData.triviaQueue = [];
 
-
-    // const token = await Auth.get({
-    //   clientId: spotify_clientid,
-    //   clientSecret: spotify_secret,
-    // });
     await sp_client.login(spotify_clientid, spotify_secret);
     const regexp = /\/playlist\/(.+)\?/;
     playlist = playlist.match(regexp)[1];
@@ -390,11 +379,7 @@ module.exports = class MusicTriviaCommand extends Command {
     var songMap = new Map();
     for (let i = 0; i < numberOfSongs; i++) {
       var track = trackItems[Math.floor(Math.random() * trackItems.length)].track;
-      if (songMap.has(track.id)) {
-        i--;
-        continue;
-      }
-      if (!track.previewUrl || !track.artists[0].name || !track.name) {
+      if (songMap.has(track.id) || !track.previewUrl || !track.artists[0].name || !track.name) {
         i--;
         continue;
       }
@@ -406,7 +391,6 @@ module.exports = class MusicTriviaCommand extends Command {
         image: imageLink,
         voiceChannel
       };
-      console.log(song.singer + ': ' + song.title);
       songMap.set(track.id, song);
     }
     const infoEmbed = new MessageEmbed()
