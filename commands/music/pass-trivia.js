@@ -28,7 +28,7 @@ module.exports = class PassMusicTriviaCommand extends Command {
             return;
         }
 
-        if (!message.guild.triviaData.triviaScore.has(message.author.username)) {
+        if (!message.guild.triviaData.triviaScore.has(message.author.toString())) {
             message.reply(
                 ':stop_sign: You need to participate in the trivia in order to end it'
             );
