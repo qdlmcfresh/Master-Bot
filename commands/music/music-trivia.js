@@ -68,7 +68,7 @@ module.exports = class MusicTriviaCommand extends Command {
           let userWhoFoundArtist = null;
 
           const filter = msg =>
-            message.guild.triviaData.triviaScore.has(msg.author.username);
+            message.guild.triviaData.triviaScore.has(msg.author.toString());
           const collector = message.channel.createMessageCollector(filter, {
             time: 28000
           });
@@ -87,7 +87,7 @@ module.exports = class MusicTriviaCommand extends Command {
 
 
           collector.on('collect', msg => {
-            if (!message.guild.triviaData.triviaScore.has(msg.author.username))
+            if (!message.guild.triviaData.triviaScore.has(msg.author.toString()))
               return;
             if (msg.content.startsWith(prefix)) {
               return;
@@ -102,11 +102,11 @@ module.exports = class MusicTriviaCommand extends Command {
             if (userInput === trackTitle || MusicTriviaCommand.levenshtein(userInput, trackTitle) <= MAX_DISTANCE) {
               if (songNameFound) return; // if song name already found
               songNameFound = true;
-              userWhoFoundTitle = msg.author.username;
+              userWhoFoundTitle = msg.author.toString();
 
               //Increase score of user
               message.guild.triviaData.triviaScore.set(
-                msg.author.username, message.guild.triviaData.triviaScore.get(msg.author.username) + 1
+                msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
               );
               msg.react('☑');
 
@@ -114,7 +114,7 @@ module.exports = class MusicTriviaCommand extends Command {
                 //One extra point if user guessed Title and Artist in two separate messages
                 if (userWhoFoundTitle === userWhoFoundArtist) {
                   message.guild.triviaData.triviaScore.set(
-                    msg.author.username, message.guild.triviaData.triviaScore.get(msg.author.username) + 1
+                    msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
                   );
                 }
                 return collector.stop();
@@ -124,11 +124,11 @@ module.exports = class MusicTriviaCommand extends Command {
             else if (userInput === trackArtist || MusicTriviaCommand.levenshtein(userInput, trackArtist) <= MAX_DISTANCE) {
               if (songSingerFound) return;
               songSingerFound = true;
-              userWhoFoundArtist = msg.author.username;
+              userWhoFoundArtist = msg.author.toString();
 
               //Increase score of user
               message.guild.triviaData.triviaScore.set(
-                msg.author.username, message.guild.triviaData.triviaScore.get(msg.author.username) + 1
+                msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
               );
               msg.react('☑');
 
@@ -136,7 +136,7 @@ module.exports = class MusicTriviaCommand extends Command {
                 //One extra point if user guessed Title and Artist in two separate messages
                 if (userWhoFoundTitle === userWhoFoundArtist) {
                   message.guild.triviaData.triviaScore.set(
-                    msg.author.username, message.guild.triviaData.triviaScore.get(msg.author.username) + 1
+                    msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
                   );
                 }
                 return collector.stop();
@@ -147,13 +147,13 @@ module.exports = class MusicTriviaCommand extends Command {
             ) {
               if ((songSingerFound && !songNameFound) || (songNameFound && !songSingerFound)) {
                 message.guild.triviaData.triviaScore.set(
-                  msg.author.username, message.guild.triviaData.triviaScore.get(msg.author.username) + 1
+                  msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
                 );
                 msg.react('☑');
                 return collector.stop();
               }
               message.guild.triviaData.triviaScore.set(
-                msg.author.username, message.guild.triviaData.triviaScore.get(msg.author.username) + 3
+                msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 3
               );
               msg.react('☑');
               return collector.stop();
