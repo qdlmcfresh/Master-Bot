@@ -19,8 +19,6 @@ Make a config.json file in the root directory of the project and add:
   "discord_owner_id": "Your-Discord-ID",
   "token": "Your-Bot-Token",
   "youtubeAPI": "youtube-api-key"
-  "spotify_secret": "spotify-secret",
-  "spotify_clientid": "spotify-client-id"
 }
 ```
 
@@ -37,7 +35,9 @@ Make a config.json file in the root directory of the project and add:
   "tenorAPI": "tenor-API-key",
   "newsAPI": "news-api-key",
   "twitchClientID": "Your-Client-ID",
-  "twitchClientSecret": "Your-Client-Secret"
+  "twitchClientSecret": "Your-Client-Secret",
+  "spotifySecret": "spotify-secret",
+  "spotifyClientId": "spotify-client-id"
 }
 ```
 
@@ -72,7 +72,8 @@ If you are not cloning this repo, make sure your dependencies versions are the s
 | !skipall              | Skip all songs in queue                                                                                                   | !skipall                                                          |
 | !skipto               | Skip to a specific song in the queue, provide the song number as an argument                                              | !skipto 5                                                         |
 | !volume               | Adjust song volume                                                                                                        | !volume 80                                                        |
-| !music-trivia         | Engage in a music trivia with your friends. You can add more songs to the trivia pool in resources/music/musictrivia.json | !music-trivia                                                     |
+| !music-trivia         | Engage in a music trivia with your friends. Use any public spotify playlist                                               | !music-trivia 15 https://open.spotify.com/playlist/...            |
+| !pass                 | Skip current song in music trivia                                                                                         | !pass                                                             |
 | !loop                 | Loop the currently playing song                                                                                           | !loop 5                                                           |
 | !loopqueue            | Loop the queue                                                                                                            | !loopqueue 2                                                      |
 | !lyrics               | Get lyrics of any song or the lyrics of the currently playing song                                                        | !lyrics song-name                                                 |
@@ -136,6 +137,8 @@ If you are not cloning this repo, make sure your dependencies versions are the s
 [Get a NewsAPI API key here](https://newsapi.org/)
 
 [How to get a Youtube API key](https://developers.google.com/youtube/v3/getting-started)
+
+[How to get a Spotify API key](https://developer.spotify.com/documentation/web-api/quick-start/)
 
 [Get a Genius API key here](https://genius.com/api-clients/new)
 
