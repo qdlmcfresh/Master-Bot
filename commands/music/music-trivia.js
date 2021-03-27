@@ -181,14 +181,13 @@ module.exports = class MusicTriviaCommand extends Command {
               })
             );
 
-            const song = `${classThis.capitalize_Words(
-              queue[0].singer
-            )}: ${classThis.capitalize_Words(queue[0].title)}`;
+            const song = `${classThis.capitalize_Words(queue[0].singer)} - ${classThis.capitalize_Words(queue[0].title)}`;
 
             const embed = new MessageEmbed()
               .setColor('#ff7373')
-              .setTitle(`:musical_note: The song was: ${song}`)
-            classThis.setLeaderBoardOnMessage(embed, Array.from(sortedScoreMap.entries()))
+              .setTitle(`:musical_note: The song was:\n ${song}`)
+              .setThumbnail(queue[0].image)
+            classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()))
 
             message.channel.send(embed);
             queue.shift();
@@ -216,8 +215,8 @@ module.exports = class MusicTriviaCommand extends Command {
           );
           const embed = new MessageEmbed()
             .setColor('#ff7373')
-            .setTitle(`Music Quiz Results:`)
-          classThis.setLeaderBoardOnMessage(embed, Array.from(sortedScoreMap.entries()))
+            .setTitle(`Music Quiz Results`)
+          classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()))
           message.channel.send(embed);
           message.guild.musicData.isPlaying = false;
           message.guild.triviaData.isTriviaRunning = false;
@@ -250,7 +249,7 @@ module.exports = class MusicTriviaCommand extends Command {
             const embed = new MessageEmbed()
               .setColor('#ff7373')
               .setTitle(`Music Quiz Results`);
-            classThis.setLeaderBoardOnMessage(embed, Array.from(sortedScoreMap.entries()))
+            classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()))
             message.channel.send(embed);
             message.guild.musicData.isPlaying = false;
             message.guild.triviaData.isTriviaRunning = false;
@@ -296,7 +295,7 @@ module.exports = class MusicTriviaCommand extends Command {
     return leaderBoard;
   }
 
-  static setLeaderBoardOnMessage(message, arr) {
+  static setLeaderboardOnMessage(message, arr) {
     if (!message) return;
     if (!arr) return;
     if (!arr[0]) return; // issue #422
