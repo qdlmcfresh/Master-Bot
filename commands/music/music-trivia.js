@@ -5,7 +5,7 @@ const fs = require('fs');
 const db = require('quick.db');
 const { prefix, spotifySecret, spotifyClientId } = require('../../config.json');
 const Spotify = require('spotify-api.js');
-const sp_client = new Spotify.Client();
+const spotifyClient = new Spotify.Client();
 const MAX_DISTANCE = 3;
 const REGEX_PARENTHESES = /\(.*\)/;
 const REGEX_DASH = /-.*/;
@@ -358,14 +358,14 @@ module.exports = class MusicTriviaCommand extends Command {
     message.guild.triviaData.isTriviaRunning = true;
     message.guild.triviaData.triviaQueue = [];
 
-    await sp_client.login(spotifyClientId, spotifySecret);
-    const regexp = /\/playlist\/(.+)\?/;
-    playlist = playlist.match(regexp)[1];
+    await spotifyClient.login(spotifyClientId, spotifySecret);
+    const playlistRegex = /\/playlist\/(.+)\?/;
+    playlist = playlist.match(playlistRegex)[1];
     if (!playlist) {
       message.reply('Invalid playlist!');
       return;
     }
-    const spotifyPlaylist = await sp_client.playlists.get(playlist);
+    const spotifyPlaylist = await spotifyClient.playlists.get(playlist);
     var tempTracks = await spotifyPlaylist.getTracks({ offset: 0 });
     let trackItems = tempTracks.items;
     if (tempTracks.total > tempTracks.limit) {
