@@ -418,7 +418,7 @@ module.exports = class MusicTriviaCommand extends Command {
     );
     channelInfo.forEach(user => {
       if (user[1].user.bot) return;
-      message.guild.triviaData.triviaScore.set(user[1].user.username, 0);
+      message.guild.triviaData.triviaScore.set(user[1].user.toString(), 0);
     });
     MusicTriviaCommand.playQuizSong(
       message.guild.triviaData.triviaQueue,
