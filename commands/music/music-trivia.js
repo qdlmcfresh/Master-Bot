@@ -382,7 +382,7 @@ module.exports = class MusicTriviaCommand extends Command {
       indexArray[j] = temp;
     }
     var songMap = new Map();
-    for (i in indexArray) {
+    for (const i in indexArray) {
       var track = trackItems[i].track;
       if (songMap.has(track.id) || !track.previewUrl || !track.artists[0].name || !track.name) {
         continue;
