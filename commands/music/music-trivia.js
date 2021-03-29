@@ -376,10 +376,10 @@ module.exports = class MusicTriviaCommand extends Command {
     }
     var indexArray = [...Array(trackItems.length).keys()];
     for (let i = indexArray.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * i)
-      const temp = array[i]
-      array[i] = array[j]
-      array[j] = temp
+      const j = Math.floor(Math.random() * i);
+      const temp = indexArray[i];
+      indexArray[i] = indexArray[j];
+      indexArray[j] = temp;
     }
     var songMap = new Map();
     for (i in indexArray) {
