@@ -374,12 +374,17 @@ module.exports = class MusicTriviaCommand extends Command {
         trackItems = trackItems.concat(tempTracks.items);
       }
     }
-
+    var indexArray = [...Array(trackItems.length).keys()];
+    for (let i = indexArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * i)
+      const temp = array[i]
+      array[i] = array[j]
+      array[j] = temp
+    }
     var songMap = new Map();
-    for (let i = 0; i < numberOfSongs; i++) {
-      var track = trackItems[Math.floor(Math.random() * trackItems.length)].track;
+    for (i in indexArray) {
+      var track = trackItems[i].track;
       if (songMap.has(track.id) || !track.previewUrl || !track.artists[0].name || !track.name) {
-        i--;
         continue;
       }
       var imageLink = await track.album.images[2].url;
@@ -391,6 +396,12 @@ module.exports = class MusicTriviaCommand extends Command {
         voiceChannel
       };
       songMap.set(track.id, song);
+    }
+    if (songMap.size < numberOfSongs) {
+      message.guild.musicData.isPlaying = false;
+      message.guild.triviaData.isTriviaRunning = false;
+      message.guild.triviaData.triviaQueue = [];
+      return message.reply("Couldnt get enough tracks with preview, sorey");
     }
     const infoEmbed = new MessageEmbed()
       .setColor('#ff7373')
