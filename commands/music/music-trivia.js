@@ -97,7 +97,10 @@ module.exports = class MusicTriviaCommand extends Command {
 
             // if user guessed song name
             if (userInput === trackTitle || MusicTriviaCommand.levenshtein(userInput, trackTitle) <= MAX_DISTANCE) {
-              if (songNameFound) return; // if song name already found
+              if (songNameFound) {
+                msg.react('😴');
+                return;
+              } // if song name already found
               songNameFound = true;
               userWhoFoundTitle = msg.author.toString();
 
@@ -105,7 +108,7 @@ module.exports = class MusicTriviaCommand extends Command {
               message.guild.triviaData.triviaScore.set(
                 msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
               );
-              msg.react('☑');
+              msg.react('✅');
 
               if (songNameFound && songSingerFound) {
                 //One extra point if user guessed Title and Artist in two separate messages
@@ -119,7 +122,10 @@ module.exports = class MusicTriviaCommand extends Command {
             }
             // if user guessed singer
             else if (userInput === trackArtist || MusicTriviaCommand.levenshtein(userInput, trackArtist) <= MAX_DISTANCE) {
-              if (songSingerFound) return;
+              if (songSingerFound) {
+                msg.react('😴');
+                return;
+              }
               songSingerFound = true;
               userWhoFoundArtist = msg.author.toString();
 
@@ -127,7 +133,7 @@ module.exports = class MusicTriviaCommand extends Command {
               message.guild.triviaData.triviaScore.set(
                 msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
               );
-              msg.react('☑');
+              msg.react('✅');
 
               if (songNameFound && songSingerFound) {
                 //One extra point if user guessed Title and Artist in two separate messages
@@ -146,13 +152,13 @@ module.exports = class MusicTriviaCommand extends Command {
                 message.guild.triviaData.triviaScore.set(
                   msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
                 );
-                msg.react('☑');
+                msg.react('✅');
                 return collector.stop();
               }
               message.guild.triviaData.triviaScore.set(
                 msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 3
               );
-              msg.react('☑');
+              msg.react('✅');
               return collector.stop();
             } else {
               // wrong answer
