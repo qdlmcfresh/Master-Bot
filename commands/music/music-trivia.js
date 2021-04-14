@@ -385,6 +385,10 @@ module.exports = class MusicTriviaCommand extends Command {
       let track = trackItems[randIndex].track;
 
       if (skippedIds.includes(track.id)) { //The track couldn't be added previously or was already added so we just skip all other checks
+        if (skippedIds.length === trackItems.length) {
+          console.log('All tracks in this playlist were faulty: ' + playlist);
+          break; //There was an issue with all tracks of the playlist, so we give up and stop the loop
+        }
         continue;
       }
 
