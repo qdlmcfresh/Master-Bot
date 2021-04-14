@@ -7,7 +7,8 @@ module.exports = class StopMusicTriviaCommand extends Command {
       aliases: [
         'stop-music-trivia',
         'end-trivia',
-        'stop-trivia'
+        'stop-trivia',
+        'stop-quiz'
       ],
       memberName: 'stop-trivia',
       group: 'music',

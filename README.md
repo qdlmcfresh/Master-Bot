@@ -37,7 +37,8 @@ Make a config.json file in the root directory of the project and add:
   "twitchClientID": "Your-Client-ID",
   "twitchClientSecret": "Your-Client-Secret",
   "spotifySecret": "spotify-secret",
-  "spotifyClientId": "spotify-client-id"
+  "spotifyClientId": "spotify-client-id",
+  "spotifyMarket": "two-letter-country-code e.g. US"
 }
 ```
 

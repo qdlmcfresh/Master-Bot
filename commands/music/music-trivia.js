@@ -3,7 +3,7 @@ const { Command } = require('discord.js-commando');
 const { MessageEmbed } = require('discord.js');
 const fs = require('fs');
 const db = require('quick.db');
-const { prefix, spotifySecret, spotifyClientId } = require('../../config.json');
+const { prefix, spotifySecret, spotifyClientId, spotifyMarket } = require('../../config.json');
 const Spotify = require('spotify-api.js');
 const spotifyClient = new Spotify.Client();
 const MAX_DISTANCE = 3;
@@ -181,7 +181,7 @@ module.exports = class MusicTriviaCommand extends Command {
             const song = `${classThis.capitalize_Words(queue[0].singer)} - ${classThis.capitalize_Words(queue[0].title)}`;
 
             const embed = new MessageEmbed()
-              .setColor('#ff7373')
+              .setColor('#44f1e1')
               .setTitle(`:musical_note: The song was:\n ${song}`)
               .setThumbnail(queue[0].image);
             classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
@@ -209,7 +209,7 @@ module.exports = class MusicTriviaCommand extends Command {
             })
           );
           const embed = new MessageEmbed()
-            .setColor('#ff7373')
+            .setColor('#44f1e1')
             .setTitle(`Music Quiz Results`)
           classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
           message.channel.send(embed);
@@ -240,7 +240,7 @@ module.exports = class MusicTriviaCommand extends Command {
               })
             );
             const embed = new MessageEmbed()
-              .setColor('#ff7373')
+              .setColor('#44f1e1')
               .setTitle(`Music Quiz Results`);
             classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
             message.channel.send(embed);
@@ -362,11 +362,11 @@ module.exports = class MusicTriviaCommand extends Command {
     const playlistRegex = /\/playlist\/(.+)\?/;
     playlist = playlist.match(playlistRegex)[1];
     if (!playlist) {
-      message.reply('Invalid playlist!');
+      await message.reply('Invalid playlist!');
       return;
     }
     const spotifyPlaylist = await spotifyClient.playlists.get(playlist);
-    var tempTracks = await spotifyPlaylist.getTracks({ offset: 0 });
+    let tempTracks = await spotifyPlaylist.getTracks({ offset: 0, market: spotifyMarket });
     let trackItems = tempTracks.items;
     if (tempTracks.total > tempTracks.limit) {
       while (trackItems.length < tempTracks.total) {
@@ -374,20 +374,41 @@ module.exports = class MusicTriviaCommand extends Command {
         trackItems = trackItems.concat(tempTracks.items);
       }
     }
-    var indexArray = [...Array(trackItems.length).keys()];
-    for (let i = indexArray.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * i);
-      const temp = indexArray[i];
-      indexArray[i] = indexArray[j];
-      indexArray[j] = temp;
-    }
-    var songMap = new Map();
-    for (randIndex in indexArray.values()) {
-      var track = trackItems[randIndex].track;
-      if (songMap.has(track.id) || !track.previewUrl || !track.artists[0].name || !track.name) {
+
+    let songMap = new Map();
+    let skippedIds = [];
+    let numberOfSkips = 0; //TODO find a reliable way to get previewURL
+    let addedSongs = 0;
+
+    while (addedSongs < numberOfSongs) {
+      let randIndex = this.randomIntFromInterval(0, trackItems.length - 1);
+      let track = trackItems[randIndex].track;
+
+      if (skippedIds.includes(track.id)) { //The track couldn't be added previously or was already added so we just skip all other checks
         continue;
       }
-      var imageLink = await track.album.images[2].url;
+
+      if (songMap.has(track.id)) { //Track was already added
+        skippedIds.push(track.id);
+        continue;
+      }
+
+      if (track.artists[0].name === null || track.name === null) { //Track has missing artist or name
+        skippedIds.push(track.id);
+        continue;
+      }
+
+      if (track.previewUrl === null) {
+        let track_temp = await spotifyClient.tracks.get(track.id); //Try to get previewURL by requesting the track directly by its id
+        if (track_temp.previewUrl === null) { //Track has no preview URL or we just can't get it
+          skippedIds.push(track.id);
+          numberOfSkips++;
+          continue;
+        }
+        track.previewUrl = track_temp.previewUrl;
+      }
+
+      let imageLink = track.album.images[0].url;
       const song = {
         url: track.previewUrl,
         singer: track.artists[0].name,
@@ -396,7 +417,10 @@ module.exports = class MusicTriviaCommand extends Command {
         voiceChannel
       };
       songMap.set(track.id, song);
+      addedSongs++;
     }
+    console.log("Had to skip " + numberOfSkips + " songs because of missing previewURL");
+
     if (songMap.size < numberOfSongs) {
       message.guild.musicData.isPlaying = false;
       message.guild.triviaData.isTriviaRunning = false;
@@ -404,13 +428,13 @@ module.exports = class MusicTriviaCommand extends Command {
       return message.reply("Couldnt get enough tracks with preview, sorey");
     }
     const infoEmbed = new MessageEmbed()
-      .setColor('#ff7373')
+      .setColor('#44f1e1')
       .setTitle(':notes: Starting Music Quiz!')
       .setDescription(
         `:notes: Get ready! There are ${numberOfSongs} songs, you have 30 seconds to guess either the singer/band or the name of the song. Good luck!
       You can end the trivia at any point by using the ${prefix}end-trivia command!`
       );
-    message.channel.send(infoEmbed);
+    await message.channel.send(infoEmbed);
     message.guild.triviaData.triviaQueue = Array.from(songMap.values());
     const channelInfo = Array.from(
       message.member.voice.channel.members.entries()
@@ -419,9 +443,12 @@ module.exports = class MusicTriviaCommand extends Command {
       if (user[1].user.bot) return;
       message.guild.triviaData.triviaScore.set(user[1].user.toString(), 0);
     });
-    MusicTriviaCommand.playQuizSong(
+    await MusicTriviaCommand.playQuizSong(
       message.guild.triviaData.triviaQueue,
       message
     );
+  }
+  randomIntFromInterval(min, max) { // min and max included
+    return Math.floor(Math.random() * (max - min + 1) + min);
   }
 };
