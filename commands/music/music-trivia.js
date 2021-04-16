@@ -3,6 +3,7 @@ const { Command } = require('discord.js-commando');
 const { MessageEmbed } = require('discord.js');
 const fs = require('fs');
 const db = require('quick.db');
+var { getData, getPreview, getTracks } = require("spotify-url-info");
 const { prefix, spotifySecret, spotifyClientId, spotifyMarket } = require('../../config.json');
 const Spotify = require('spotify-api.js');
 const spotifyClient = new Spotify.Client();
@@ -397,17 +398,18 @@ module.exports = class MusicTriviaCommand extends Command {
     let numberOfSkips = 0; //TODO find a reliable way to get previewURL
     for (let track of trackItems) {
       track = track.track;
-      console.log(track);
       if (!track.id || songMap.has(track.id) || track.artists[0].name === null || track.name === null) {
         continue;
       }
       if (track.previewUrl === null) {
-        let track_temp = await spotifyClient.tracks.get(track.id); //Try to get previewURL by requesting the track directly by its id
-        if (track_temp.previewUrl === null) { //Track has no preview URL or we just can't get it
+        //Try to get preview url via spotify-url-info
+        let url = await getPreview(track.externalUrls.spotify);
+        //console.log(url);
+        if (!url) {
           numberOfSkips++;
           continue;
         }
-        track.previewUrl = track_temp.previewUrl;
+        track.previewUrl = url.audio;
       }
 
       let imageLink = track.album.images[0].url;
