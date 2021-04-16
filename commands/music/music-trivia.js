@@ -350,6 +350,17 @@ module.exports = class MusicTriviaCommand extends Command {
     }
     return track[str2.length][str1.length];
   }
+  /**
+ * Shuffles array in place. ES6 version
+ * @param {Array} a items An array containing the items.
+ */
+  static shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
 
   async run(message, { numberOfSongs, playlist }) {
     // check if user is in a voice channel
@@ -381,37 +392,18 @@ module.exports = class MusicTriviaCommand extends Command {
       }
     }
 
+    MusicTriviaCommand.shuffle(trackItems);
     let songMap = new Map();
-    let skippedIds = [];
     let numberOfSkips = 0; //TODO find a reliable way to get previewURL
-    let addedSongs = 0;
-
-    while (addedSongs < numberOfSongs) {
-      let randIndex = this.randomIntFromInterval(0, trackItems.length - 1);
-      let track = trackItems[randIndex].track;
-
-      if (skippedIds.includes(track.id)) { //The track couldn't be added previously or was already added so we just skip all other checks
-        if (skippedIds.length === trackItems.length) {
-          console.log('All tracks in this playlist were faulty: ' + playlist);
-          break; //There was an issue with all tracks of the playlist, so we give up and stop the loop
-        }
+    for (let track of trackItems) {
+      track = track.track;
+      console.log(track);
+      if (!track.id || songMap.has(track.id) || track.artists[0].name === null || track.name === null) {
         continue;
       }
-
-      if (songMap.has(track.id)) { //Track was already added
-        skippedIds.push(track.id);
-        continue;
-      }
-
-      if (track.artists[0].name === null || track.name === null) { //Track has missing artist or name
-        skippedIds.push(track.id);
-        continue;
-      }
-
       if (track.previewUrl === null) {
         let track_temp = await spotifyClient.tracks.get(track.id); //Try to get previewURL by requesting the track directly by its id
         if (track_temp.previewUrl === null) { //Track has no preview URL or we just can't get it
-          skippedIds.push(track.id);
           numberOfSkips++;
           continue;
         }
@@ -427,8 +419,11 @@ module.exports = class MusicTriviaCommand extends Command {
         voiceChannel
       };
       songMap.set(track.id, song);
-      addedSongs++;
+      if (songMap.size == numberOfSongs) {
+        break;
+      }
     }
+
     console.log("Had to skip " + numberOfSkips + " songs because of missing previewURL");
 
     if (songMap.size < numberOfSongs) {
