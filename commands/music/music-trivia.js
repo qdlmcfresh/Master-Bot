@@ -44,13 +44,13 @@ module.exports = class MusicTriviaCommand extends Command {
     });
   }
 
-  static async playQuizSong(queue, message) {
+  static async playQuizSong(queue, message, song_count) {
     let classThis = this;
     message.guild.triviaData.triviaPass.clear();
-    message.member.voice.channel.join().then(function(connection) {
-      const dispatcher = connection
+    message.member.voice.channel.join().then(async function(connection) {
+      const dispatcher = await connection
         .play(queue[0].url)
-        .on('start', function() {
+        .on('start', async function() {
           console.log('Playing: ' + queue[0].singer + ': ' + queue[0].title + ' ' + queue[0].url);
           message.guild.musicData.songDispatcher = dispatcher;
           if (!db.get(`${message.guild.id}.serverSettings.volume`))
@@ -81,10 +81,9 @@ module.exports = class MusicTriviaCommand extends Command {
             .replace(REGEX_SPECIAL_CHARACTERS, '')
             .trim();
 
-          let trackArtist = queue[0].singer.toLowerCase().replace().replace(REGEX_SPECIAL_CHARACTERS, '');
+          let trackArtist = queue[0].singer.toLowerCase().replace(REGEX_SPECIAL_CHARACTERS, '');
 
-
-          collector.on('collect', msg => {
+          collector.on('collect', await function(msg) {
             if (!message.guild.triviaData.triviaScore.has(msg.author.toString()))
               return;
             if (msg.content.startsWith(prefix)) {
@@ -166,7 +165,7 @@ module.exports = class MusicTriviaCommand extends Command {
               return msg.react('❌');
             }
           });
-          collector.on('end', function() {
+          collector.on('end', async function() {
             /*
             The reason for this if statement is that we don't want to get an
             empty embed returned via chat by the bot if end-trivia command was called
@@ -190,11 +189,12 @@ module.exports = class MusicTriviaCommand extends Command {
             const embed = new MessageEmbed()
               .setColor('#44f1e1')
               .setTitle(`:musical_note: The song was:\n ${song}`)
-              .setThumbnail(queue[0].image);
+              .setThumbnail(queue[0].image)
+              .setFooter(`Song ${song_count[0]} of ${song_count[1]}`);
             classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
 
             message.channel.send(embed);
-            queue.shift();
+            await queue.shift();
             dispatcher.end();
             return;
           });
@@ -204,7 +204,7 @@ module.exports = class MusicTriviaCommand extends Command {
           console.log(e);
           if (queue.length > 1) {
             await queue.shift();
-            await classThis.playQuizSong(queue, message);
+            await classThis.playQuizSong(queue, message, [song_count[0] += 1, song_count[1]]);
             return;
           }
           const sortedScoreMap = new Map(
@@ -229,7 +229,7 @@ module.exports = class MusicTriviaCommand extends Command {
         })
         .on('finish', function() {
           if (queue.length >= 1) {
-            return classThis.playQuizSong(queue, message);
+            return classThis.playQuizSong(queue, message, [song_count[0] += 1, song_count[1]]);
           } else {
             if (message.guild.triviaData.wasTriviaEndCalled) {
               message.guild.musicData.isPlaying = false;
@@ -260,22 +260,6 @@ module.exports = class MusicTriviaCommand extends Command {
           }
         });
     });
-  }
-
-  static getLeaderBoard(arr) {
-    if (!arr) return;
-    if (!arr[0]) return; // issue #422
-    let leaderBoard = '';
-
-    leaderBoard = `👑   **${arr[0][0]}:** ${arr[0][1]}  points`;
-
-    if (arr.length > 1) {
-      for (let i = 1; i < arr.length; i++) {
-        leaderBoard =
-          leaderBoard + `\n\n   ${i + 1}: ${arr[i][0]}: ${arr[i][1]}  points`;
-      }
-    }
-    return leaderBoard;
   }
 
   static setLeaderboardOnMessage(message, arr) {
@@ -366,6 +350,8 @@ module.exports = class MusicTriviaCommand extends Command {
     if (!playlist) {
       await message.reply('Invalid playlist!');
       return;
+    } else {
+      await message.reply('Collecting songs...');
     }
     const spotifyPlaylist = await spotifyClient.playlists.get(playlist);
     let tempTracks = await spotifyPlaylist.getTracks({ offset: 0, market: spotifyMarket });
@@ -436,7 +422,8 @@ module.exports = class MusicTriviaCommand extends Command {
     });
     await MusicTriviaCommand.playQuizSong(
       message.guild.triviaData.triviaQueue,
-      message
+      message,
+      [1 ,numberOfSongs]
     );
   }
 };
