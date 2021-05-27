@@ -39,7 +39,6 @@ Structures.extend('Guild', function (Guild) {
   }
   return MusicGuild;
 });
-console.log("Docker test");
 
 const client = new CommandoClient({
   commandPrefix: prefix,
