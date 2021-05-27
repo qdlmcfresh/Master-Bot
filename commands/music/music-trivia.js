@@ -341,19 +341,21 @@ module.exports = class MusicTriviaCommand extends Command {
     }
     if (message.guild.musicData.isPlaying === true)
       return message.channel.send(':x: A quiz or a song is already running!');
-    message.guild.musicData.isPlaying = true;
-    message.guild.triviaData.isTriviaRunning = true;
-    message.guild.triviaData.triviaQueue = [];
+
 
     await spotifyClient.login(spotifyClientId, spotifySecret);
     const playlistRegex = /\/playlist\/(.+)\?/;
-    playlist = playlist.match(playlistRegex)[1];
+    playlist = playlist.match(playlistRegex);
     if (!playlist) {
       await message.reply('Invalid playlist!');
       return;
     } else {
+      playlist = playlist[1];
       await message.reply('Collecting songs...');
     }
+    message.guild.musicData.isPlaying = true;
+    message.guild.triviaData.isTriviaRunning = true;
+    message.guild.triviaData.triviaQueue = [];
     const spotifyPlaylist = await spotifyClient.playlists.get(playlist);
     let tempTracks = await spotifyPlaylist.getTracks({ offset: 0, market: spotifyMarket });
     let trackItems = tempTracks.items;
