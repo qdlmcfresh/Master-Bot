@@ -14,20 +14,9 @@ module.exports = class StopMusicTriviaCommand extends Command {
       group: 'music',
       description: 'End the music trivia!',
       guildOnly: true,
-      clientPermissions: ['SPEAK', 'CONNECT']
     });
   }
   run(message) {
-    if (!message.guild.triviaData.isTriviaRunning) {
-      message.reply(':x: No trivia is currently running!');
-      return;
-    }
-
-    if (message.guild.me.voice.channel !== message.member.voice.channel) {
-      message.reply(':no_entry: Please join a voice channel and try again!');
-      return;
-    }
-
     if (!message.guild.triviaData.triviaScore.has(message.author.toString())) {
       message.reply(
         ':stop_sign: You need to participate in the trivia in order to end it'
