@@ -75,7 +75,7 @@ module.exports = class MusicTriviaCommand extends Command {
           let trackTitle = queue[0].title
             .split('feat.')[0]
             .split('ft.')[0]
-            .split('Feat.')
+            .split('Feat.')[0]
             .toLowerCase()
             .replace(REGEX_DASH, '')
             .replace(REGEX_PARENTHESES, '')
