@@ -47,10 +47,10 @@ module.exports = class MusicTriviaCommand extends Command {
   static async playQuizSong(queue, message, song_count) {
     let classThis = this;
     message.guild.triviaData.triviaPass.clear();
-    message.member.voice.channel.join().then(async function(connection) {
+    message.member.voice.channel.join().then(async function (connection) {
       const dispatcher = await connection
         .play(queue[0].url)
-        .on('start', async function() {
+        .on('start', async function () {
           console.log('Playing: ' + queue[0].singer + ': ' + queue[0].title + ' ' + queue[0].url);
           message.guild.musicData.songDispatcher = dispatcher;
           if (!db.get(`${message.guild.id}.serverSettings.volume`))
@@ -75,6 +75,7 @@ module.exports = class MusicTriviaCommand extends Command {
           let trackTitle = queue[0].title
             .split('feat.')[0]
             .split('ft.')[0]
+            .split('Feat.')
             .toLowerCase()
             .replace(REGEX_DASH, '')
             .replace(REGEX_PARENTHESES, '')
@@ -83,7 +84,7 @@ module.exports = class MusicTriviaCommand extends Command {
 
           let trackArtist = queue[0].singer.toLowerCase().replace(REGEX_SPECIAL_CHARACTERS, '');
 
-          collector.on('collect', await function(msg) {
+          collector.on('collect', await function (msg) {
             if (!message.guild.triviaData.triviaScore.has(msg.author.toString()))
               return;
             if (msg.content.startsWith(prefix)) {
@@ -165,7 +166,7 @@ module.exports = class MusicTriviaCommand extends Command {
               return msg.react('❌');
             }
           });
-          collector.on('end', async function() {
+          collector.on('end', async function () {
             /*
             The reason for this if statement is that we don't want to get an
             empty embed returned via chat by the bot if end-trivia command was called
@@ -176,7 +177,7 @@ module.exports = class MusicTriviaCommand extends Command {
             }
 
             const sortedScoreMap = new Map(
-              [...message.guild.triviaData.triviaScore.entries()].sort(function(
+              [...message.guild.triviaData.triviaScore.entries()].sort(function (
                 a,
                 b
               ) {
@@ -199,7 +200,7 @@ module.exports = class MusicTriviaCommand extends Command {
             return;
           });
         })
-        .on('error', async function(e) {
+        .on('error', async function (e) {
           message.reply(':x: Could not play that song!');
           console.log(e);
           if (queue.length > 1) {
@@ -208,7 +209,7 @@ module.exports = class MusicTriviaCommand extends Command {
             return;
           }
           const sortedScoreMap = new Map(
-            [...message.guild.triviaData.triviaScore.entries()].sort(function(
+            [...message.guild.triviaData.triviaScore.entries()].sort(function (
               a,
               b
             ) {
@@ -227,7 +228,7 @@ module.exports = class MusicTriviaCommand extends Command {
           message.guild.me.voice.channel.leave();
           return;
         })
-        .on('finish', function() {
+        .on('finish', function () {
           if (queue.length >= 1) {
             return classThis.playQuizSong(queue, message, [song_count[0] += 1, song_count[1]]);
           } else {
@@ -239,7 +240,7 @@ module.exports = class MusicTriviaCommand extends Command {
               return;
             }
             const sortedScoreMap = new Map(
-              [...message.guild.triviaData.triviaScore.entries()].sort(function(
+              [...message.guild.triviaData.triviaScore.entries()].sort(function (
                 a,
                 b
               ) {
@@ -292,7 +293,7 @@ module.exports = class MusicTriviaCommand extends Command {
 
   // https://www.w3resource.com/javascript-exercises/javascript-string-exercise-9.php
   static capitalize_Words(str) {
-    return str.replace(/\w\S*/g, function(txt) {
+    return str.replace(/\w\S*/g, function (txt) {
       return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     });
   }
@@ -423,7 +424,7 @@ module.exports = class MusicTriviaCommand extends Command {
     await MusicTriviaCommand.playQuizSong(
       message.guild.triviaData.triviaQueue,
       message,
-      [1 ,numberOfSongs]
+      [1, numberOfSongs]
     );
   }
 };
