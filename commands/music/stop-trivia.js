@@ -16,9 +16,9 @@ module.exports = class StopMusicTriviaCommand extends Command {
       guildOnly: true,
     });
   }
-  run(message) {
+  async run(message) {
     if (!message.guild.triviaData.triviaScore.has(message.author.toString())) {
-      message.reply(
+      await message.reply(
         ':stop_sign: You need to participate in the trivia in order to end it'
       );
       return;
@@ -28,6 +28,6 @@ module.exports = class StopMusicTriviaCommand extends Command {
     message.guild.triviaData.wasTriviaEndCalled = true;
     message.guild.triviaData.triviaScore.clear();
     message.guild.musicData.songDispatcher.end();
-    return;
+    await message.channel.send('🛑 K, stopping trivia');
   }
 };

@@ -1,16 +1,16 @@
-const Discord = require('discord.js');
 const { Command } = require('discord.js-commando');
 const { MessageEmbed } = require('discord.js');
-const fs = require('fs');
 const db = require('quick.db');
-let { getData, getPreview, getTracks } = require('spotify-url-info');
+let { getPreview } = require('spotify-url-info');
 const { prefix, spotifySecret, spotifyClientId, spotifyMarket } = require('../../config.json');
+const playlists_json = require('../../trivia-playlists.json');
 const Spotify = require('spotify-api.js');
 const spotifyClient = new Spotify.Client();
-const MAX_DISTANCE = 3;
+const MAX_DISTANCE = 3; //TODO evtl in cofing verschieben
 const REGEX_PARENTHESES = /\(.*\)/;
 const REGEX_DASH = /-.*/;
 const REGEX_SPECIAL_CHARACTERS = /[^0-9a-zA-Z\s]+/;
+const REGEX_WHITESPACE = /\s*/g;
 
 module.exports = class MusicTriviaCommand extends Command {
   constructor(client) {
@@ -44,13 +44,187 @@ module.exports = class MusicTriviaCommand extends Command {
     });
   }
 
-  static async playQuizSong(queue, message, song_count) {
+  async run(message, { numberOfSongs, playlist }) {
+    // check if user is in a voice channel
+    let voiceChannel = message.member.voice.channel;
+    if (!voiceChannel) {
+      await message.reply(':no_entry: Please join a voice channel and try again!');
+      return;
+    }
+    if (message.guild.musicData.isPlaying === true)
+      return message.channel.send(':x: A quiz or a song is already running!');
+
+    let connection = null;
+    try {
+      connection = await voiceChannel.join();
+    } catch (e) {
+      console.log('Error Start\n' + e + '\nError End');
+      await message.reply('Couldn\'t join your voice channel');
+      return;
+    }
+
+    if (playlist == 'random') {
+      let random = Math.floor(Math.random() * (playlists_json.playlists.length - 0));
+      playlist = playlists_json.playlists[random].link;
+
+      const random_result = new MessageEmbed()
+        .setColor('#44f1e1')
+        .setTitle('The selected playlist')
+        .setDescription(`[${playlists_json.playlists[random].name}](${playlists_json.playlists[random].link})`)
+      await message.reply(random_result);
+    }
+
+    await spotifyClient.login(spotifyClientId, spotifySecret);
+    const playlistRegex = /\/playlist\/(.+)\?/;
+    playlist = playlist.match(playlistRegex);
+    if (!playlist) {
+      await message.reply('Invalid playlist!');
+      message.guild.me.voice.channel.leave();
+      return;
+    } else {
+      playlist = playlist[1];
+      await message.reply('Collecting songs...');
+    }
+
+
+    message.guild.musicData.isPlaying = true;
+    message.guild.triviaData.isTriviaRunning = true;
+    message.guild.triviaData.triviaQueue = [];
+    const spotifyPlaylist = await spotifyClient.playlists.get(playlist);
+    let tempTracks = await spotifyPlaylist.getTracks({ offset: 0, market: spotifyMarket });
+    let trackItems = tempTracks.items;
+    if (tempTracks.total > tempTracks.limit) {
+      while (trackItems.length < tempTracks.total) {
+        tempTracks = await spotifyPlaylist.getTracks({ offset: trackItems.length });
+        trackItems = trackItems.concat(tempTracks.items);
+      }
+    }
+
+    MusicTriviaCommand.shuffle(trackItems);
+    let songMap = new Map();
+    for (let track of trackItems) {
+      track = track.track;
+      if (!track.id || songMap.has(track.id) || track.artists[0].name === null || track.name === null) {
+        continue;
+      }
+      if (track.previewUrl === null) {
+        //Try to get preview url via spotify-url-info
+        let url = await getPreview(track.externalUrls.spotify);
+        track.previewUrl = url.audio;
+      }
+
+      let imageLink = track.album.images[0].url;
+      const song = {
+        url: track.previewUrl,
+        singer: track.artists[0].name,
+        title: track.name,
+        image: imageLink,
+        voiceChannel
+      };
+      songMap.set(track.id, song);
+      if (songMap.size == numberOfSongs) {
+        break;
+      }
+    }
+
+    if (songMap.size < numberOfSongs) {
+      message.guild.musicData.isPlaying = false;
+      message.guild.triviaData.isTriviaRunning = false;
+      message.guild.triviaData.triviaQueue = [];
+      message.guild.me.voice.channel.leave();
+      return message.reply('Couldn\'t get enough tracks with preview, sorry :(');
+    }
+
+    message.guild.triviaData.triviaQueue = Array.from(songMap.values());
+    const channelInfo = Array.from(
+      message.member.voice.channel.members.entries()
+    );
+    channelInfo.forEach(user => {
+      if (user[1].user.bot) return;
+      message.guild.triviaData.triviaScore.set(user[1].user.toString(), 0);
+    });
+
+    const infoEmbed = new MessageEmbed()
+      .setColor('#44f1e1')
+      .setTitle(':notes: Starting Music Quiz!')
+      .setDescription(
+        `:notes: Get ready! There are ${numberOfSongs} songs, you have 30 seconds to guess either the singer/band or the name of the song. Good luck!
+            You can end the trivia at any point by using the ${prefix}end-trivia command!`
+      );
+    await message.channel.send(infoEmbed);
+    await MusicTriviaCommand.playQuizSong(
+      connection,
+      message.guild.triviaData.triviaQueue,
+      message,
+      [1, numberOfSongs],
+      [false, false, null, null]
+    );
+  }
+
+  static async playQuizSong(connection, queue, message, song_count, point_cache) {
     let classThis = this;
-    message.guild.triviaData.triviaPass.clear();
-    message.member.voice.channel.join().then(async function (connection) {
+
+    if (queue.length === 0) {
+      if (message.guild.triviaData.wasTriviaEndCalled) {
+        message.guild.triviaData.wasTriviaEndCalled = false;
+        message.guild.musicData.isPlaying = false;
+        message.guild.triviaData.isTriviaRunning = false;
+        message.guild.musicData.songDispatcher = null;
+        message.guild.me.voice.channel.leave();
+        return;
+      }
+      const sortedScoreMap = new Map(
+        [...message.guild.triviaData.triviaScore.entries()].sort(function(
+          a,
+          b
+        ) {
+          return b[1] - a[1];
+        })
+      );
+      const embed = new MessageEmbed()
+        .setColor('#44f1e1')
+        .setTitle(`Music Quiz Results`);
+      this.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
+      message.channel.send(embed);
+      message.guild.musicData.isPlaying = false;
+      message.guild.triviaData.isTriviaRunning = false;
+      message.guild.triviaData.triviaScore.clear();
+      message.guild.musicData.songDispatcher = null;
+      message.guild.me.voice.channel.leave();
+      message.guild.triviaData.collector.stop();
+      return;
+    }
+
+      const filter = msg => message.guild.triviaData.triviaScore.has(msg.author.toString());
+      const collector = message.channel.createMessageCollector(filter, {
+        time: 32000 //Account for time to preload the song file etc etc
+      });
+      message.guild.triviaData.collector = collector;
+
+      let trackTitle = queue[0].title
+        .split('feat.')[0]
+        .split('ft.')[0]
+        .split('Feat.')[0]
+        .toLowerCase()
+        .replace(REGEX_DASH, '')
+        .replace(REGEX_PARENTHESES, '')
+        .replace(REGEX_SPECIAL_CHARACTERS, '')
+        .replace(REGEX_WHITESPACE, '')
+        .trim();
+
+      let trackArtist = queue[0].singer
+        .toLowerCase()
+        .replace(REGEX_SPECIAL_CHARACTERS, '')
+        .replace(REGEX_WHITESPACE, '');
+
+      let songNameFound = point_cache[0];
+      let songSingerFound = point_cache[1];
+      let userWhoFoundTitle = point_cache[2];
+      let userWhoFoundArtist = point_cache[3];
+
       const dispatcher = await connection
-        .play(queue[0].url)
-        .on('start', async function () {
+        .play(queue[0].url, { highWaterMark: 24 }) //preload more of stream for it to be more stable
+        .on('start', async function() {
           console.log('Playing: ' + queue[0].singer + ': ' + queue[0].title + ' ' + queue[0].url);
           message.guild.musicData.songDispatcher = dispatcher;
           if (!db.get(`${message.guild.id}.serverSettings.volume`))
@@ -59,208 +233,156 @@ module.exports = class MusicTriviaCommand extends Command {
             dispatcher.setVolume(
               db.get(`${message.guild.id}.serverSettings.volume`)
             );
-
-          let songNameFound = false;
-          let songSingerFound = false;
-          let userWhoFoundTitle = null;
-          let userWhoFoundArtist = null;
-
-          const filter = msg =>
-            message.guild.triviaData.triviaScore.has(msg.author.toString());
-          const collector = message.channel.createMessageCollector(filter, {
-            time: 28000
-          });
-          message.guild.triviaData.collector = collector;
-
-          let trackTitle = queue[0].title
-            .split('feat.')[0]
-            .split('ft.')[0]
-            .split('Feat.')[0]
-            .toLowerCase()
-            .replace(REGEX_DASH, '')
-            .replace(REGEX_PARENTHESES, '')
-            .replace(REGEX_SPECIAL_CHARACTERS, '')
-            .trim();
-
-          let trackArtist = queue[0].singer.toLowerCase().replace(REGEX_SPECIAL_CHARACTERS, '');
-
-          collector.on('collect', await function (msg) {
-            if (!message.guild.triviaData.triviaScore.has(msg.author.toString()))
-              return;
-            if (msg.content.startsWith(prefix)) {
-              return;
-            }
-            let userInput = msg.content.toLowerCase()
-              .replace(REGEX_DASH, '')
-              .replace(REGEX_PARENTHESES, '')
-              .replace(REGEX_SPECIAL_CHARACTERS, '')
-              .trim();
-
-            // if user guessed song name
-            if (userInput === trackTitle || MusicTriviaCommand.levenshtein(userInput, trackTitle) <= MAX_DISTANCE) {
-              if (songNameFound) {
-                msg.react('😴');
-                return;
-              } // if song name already found
-              songNameFound = true;
-              userWhoFoundTitle = msg.author.toString();
-
-              //Increase score of user
-              message.guild.triviaData.triviaScore.set(
-                msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
-              );
-              msg.react('✅');
-
-              if (songNameFound && songSingerFound) {
-                //One extra point if user guessed Title and Artist in two separate messages
-                if (userWhoFoundTitle === userWhoFoundArtist) {
-                  message.guild.triviaData.triviaScore.set(
-                    msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
-                  );
-                }
-                return collector.stop();
-              }
-            }
-            // if user guessed singer
-            else if (userInput === trackArtist || MusicTriviaCommand.levenshtein(userInput, trackArtist) <= MAX_DISTANCE) {
-              if (songSingerFound) {
-                msg.react('😴');
-                return;
-              }
-              songSingerFound = true;
-              userWhoFoundArtist = msg.author.toString();
-
-              //Increase score of user
-              message.guild.triviaData.triviaScore.set(
-                msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
-              );
-              msg.react('✅');
-
-              if (songNameFound && songSingerFound) {
-                //One extra point if user guessed Title and Artist in two separate messages
-                if (userWhoFoundTitle === userWhoFoundArtist) {
-                  message.guild.triviaData.triviaScore.set(
-                    msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
-                  );
-                }
-                return collector.stop();
-              }
-            } else if (MusicTriviaCommand.levenshtein(userInput, trackArtist + ' ' + trackTitle) <= MAX_DISTANCE
-              ||
-              MusicTriviaCommand.levenshtein(userInput, trackTitle + ' ' + trackArtist) <= MAX_DISTANCE
-            ) {
-              if ((songSingerFound && !songNameFound) || (songNameFound && !songSingerFound)) {
-                message.guild.triviaData.triviaScore.set(
-                  msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
-                );
-                msg.react('✅');
-                return collector.stop();
-              }
-              message.guild.triviaData.triviaScore.set(
-                msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 3
-              );
-              msg.react('✅');
-              return collector.stop();
-            } else {
-              // wrong answer
-              return msg.react('❌');
-            }
-          });
-          collector.on('end', async function () {
-            /*
-            The reason for this if statement is that we don't want to get an
-            empty embed returned via chat by the bot if end-trivia command was called
-            */
-            if (message.guild.triviaData.wasTriviaEndCalled) {
-              message.guild.triviaData.wasTriviaEndCalled = false;
-              return;
-            }
-
-            const sortedScoreMap = new Map(
-              [...message.guild.triviaData.triviaScore.entries()].sort(function (
-                a,
-                b
-              ) {
-                return b[1] - a[1];
-              })
-            );
-
-            const song = `${classThis.capitalize_Words(queue[0].singer)} - ${classThis.capitalize_Words(queue[0].title)}`;
-
-            const embed = new MessageEmbed()
-              .setColor('#44f1e1')
-              .setTitle(`:musical_note: The song was:\n ${song}`)
-              .setThumbnail(queue[0].image)
-              .setFooter(`Song ${song_count[0]} of ${song_count[1]}`);
-            classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
-
-            message.channel.send(embed);
-            await queue.shift();
-            dispatcher.end();
-            return;
-          });
         })
-        .on('error', async function (e) {
+        .on('error', async function(e) {
           message.reply(':x: Could not play that song!');
           console.log(e);
-          if (queue.length > 1) {
-            await queue.shift();
-            await classThis.playQuizSong(queue, message, [song_count[0] += 1, song_count[1]]);
-            return;
+          collector.stop();
+        })
+        .on('debug', async function(d) {
+          console.log(d);
+        })
+        .on('finish', async function() {
+          collector.stop();
+        });
+
+      collector.on('collect', async function(msg) {
+        if (!message.guild.triviaData.triviaScore.has(msg.author.toString()))
+          return;
+        if (msg.content.startsWith(prefix)) {
+          return;
+        }
+
+        let userInput = msg.content.toLowerCase()
+          .replace(REGEX_DASH, '')
+          .replace(REGEX_PARENTHESES, '')
+          .replace(REGEX_SPECIAL_CHARACTERS, '')
+          .replace(REGEX_WHITESPACE, '')
+          .trim();
+
+        let message_guessed_song = false; //needed for the case that a message is correct for song title and artist, so we can track for which one we gave points etc
+        let message_guessed_artist = false; //needed for the case that a message is correct for song title and artist, so we can track for which one we gave points etc
+        let react_with = '❌'; //needed so we don't react more than once to a message
+
+        // if user guessed song name
+        if ((userInput === trackTitle || MusicTriviaCommand.levenshtein(userInput, trackTitle) <= MAX_DISTANCE)) {
+          if (songNameFound && !(userInput === trackArtist || MusicTriviaCommand.levenshtein(userInput, trackArtist) <= MAX_DISTANCE) && !message_guessed_artist) { //input matches title and artist
+            react_with = '😴';
+          } else if (!songNameFound) {
+            songNameFound = true;
+            message_guessed_song = true;
+            userWhoFoundTitle = msg.author.toString();
+
+            //Increase score of user
+            message.guild.triviaData.triviaScore.set(
+              msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
+            );
+            react_with = '✅';
+          } // if song name already found
+        }
+        if (userInput === trackArtist || MusicTriviaCommand.levenshtein(userInput, trackArtist) <= MAX_DISTANCE) {
+          if (songSingerFound && !message_guessed_song) {
+            react_with = '😴';
+          } else if (!songSingerFound && !message_guessed_song) {
+            songSingerFound = true;
+            message_guessed_artist = true;
+            userWhoFoundArtist = msg.author.toString();
+
+            //Increase score of user
+            message.guild.triviaData.triviaScore.set(
+              msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
+            );
+            react_with = '✅';
           }
-          const sortedScoreMap = new Map(
-            [...message.guild.triviaData.triviaScore.entries()].sort(function (
-              a,
-              b
-            ) {
-              return b[1] - a[1];
-            })
-          );
+        }
+        if ((MusicTriviaCommand.levenshtein(userInput, trackArtist + ' ' + trackTitle) <= MAX_DISTANCE
+          ||
+          MusicTriviaCommand.levenshtein(userInput, trackTitle + ' ' + trackArtist) <= MAX_DISTANCE)
+          && !message_guessed_song && !message_guessed_artist
+        ) {
+          if (songSingerFound && !songNameFound) {
+            userWhoFoundTitle = msg.author.toString();
+            message.guild.triviaData.triviaScore.set(
+              msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
+            );
+            react_with = '✅';
+          } else if (songNameFound && !songSingerFound) {
+            userWhoFoundArtist = msg.author.toString();
+            message.guild.triviaData.triviaScore.set(
+              msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
+            );
+            react_with = '✅';
+          } else {
+            userWhoFoundArtist = msg.author.toString();
+            userWhoFoundTitle = msg.author.toString();
+            message.guild.triviaData.triviaScore.set(
+              msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 2
+            );
+            react_with = '✅';
+          }
+          songNameFound = true;
+          songSingerFound = true;
+        }
+        await msg.react(react_with);
+
+        if (songNameFound && songSingerFound) {
+          //One extra point if user guessed Title and Artist in two separate messages
+          if (userWhoFoundTitle === userWhoFoundArtist) {
+            message.guild.triviaData.triviaScore.set(
+              msg.author.toString(), message.guild.triviaData.triviaScore.get(msg.author.toString()) + 1
+            );
+          }
+          return collector.stop();
+        }
+      });
+      collector.on('end', async function() {
+        /*
+        The reason for this if statement is that we don't want to get an
+        empty embed returned via chat by the bot if end-trivia command was called
+        */
+        if (message.guild.triviaData.wasTriviaEndCalled) {
+          return classThis.playQuizSong(connection, queue, message, [song_count[0], song_count[1]], []);
+        }
+
+        let time_to_play = 30000; //alt. collector.options.time; We want songs to play 30s
+        let start_time = dispatcher.startTime;
+        let end_time = new Date().getTime();
+        let percent_played = Math.round((((end_time - start_time) / time_to_play) + Number.EPSILON) * 100) / 100;
+        let percent_played_formatted = Math.round((percent_played * 100 + Number.EPSILON) * 100) / 100;
+
+        if (percent_played <= 0.69 && (!songNameFound || !songSingerFound) && !(message.guild.triviaData.triviaPass.size > 0)) {
           const embed = new MessageEmbed()
             .setColor('#44f1e1')
-            .setTitle(`Music Quiz Results`);
-          classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
+            .setTitle('⚠ Repeating current song')
+            .setDescription(`Repeating current song because playback stopped too early after ${percent_played_formatted}%. Correct guesses will be saved.`);
           message.channel.send(embed);
-          message.guild.musicData.isPlaying = false;
-          message.guild.triviaData.isTriviaRunning = false;
-          message.guild.triviaData.triviaScore.clear();
-          message.guild.musicData.songDispatcher = null;
-          message.guild.me.voice.channel.leave();
-          return;
-        })
-        .on('finish', function () {
-          if (queue.length >= 1) {
-            return classThis.playQuizSong(queue, message, [song_count[0] += 1, song_count[1]]);
-          } else {
-            if (message.guild.triviaData.wasTriviaEndCalled) {
-              message.guild.musicData.isPlaying = false;
-              message.guild.triviaData.isTriviaRunning = false;
-              message.guild.musicData.songDispatcher = null;
-              message.guild.me.voice.channel.leave();
-              return;
-            }
-            const sortedScoreMap = new Map(
-              [...message.guild.triviaData.triviaScore.entries()].sort(function (
-                a,
-                b
-              ) {
-                return b[1] - a[1];
-              })
-            );
-            const embed = new MessageEmbed()
-              .setColor('#44f1e1')
-              .setTitle(`Music Quiz Results`);
-            classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
-            message.channel.send(embed);
-            message.guild.musicData.isPlaying = false;
-            message.guild.triviaData.isTriviaRunning = false;
-            message.guild.triviaData.triviaScore.clear();
-            message.guild.musicData.songDispatcher = null;
-            message.guild.me.voice.channel.leave();
-            return;
-          }
-        });
-    });
+
+          return classThis.playQuizSong(connection, queue, message, [song_count[0], song_count[1]], [songNameFound, songSingerFound, userWhoFoundTitle, userWhoFoundArtist]);
+        }
+
+        const sortedScoreMap = new Map(
+          [...message.guild.triviaData.triviaScore.entries()].sort(function(
+            a,
+            b
+          ) {
+            return b[1] - a[1];
+          })
+        );
+
+        const song = `${classThis.capitalize_Words(queue[0].singer)} - ${classThis.capitalize_Words(queue[0].title)}`;
+
+        const embed = new MessageEmbed()
+          .setColor('#44f1e1')
+          .setTitle(`:musical_note: The song was:\n ${song}`)
+          .setThumbnail(queue[0].image)
+          .setFooter(`Song ${song_count[0]} of ${song_count[1]}`);
+        classThis.setLeaderboardOnMessage(embed, Array.from(sortedScoreMap.entries()));
+        message.channel.send(embed);
+
+        message.guild.triviaData.triviaPass.clear();
+        await queue.shift();
+        return classThis.playQuizSong(connection ,queue, message, [song_count[0] += 1, song_count[1]], [false, false, null, null]);
+      });
   }
 
   static setLeaderboardOnMessage(message, arr) {
@@ -293,7 +415,7 @@ module.exports = class MusicTriviaCommand extends Command {
 
   // https://www.w3resource.com/javascript-exercises/javascript-string-exercise-9.php
   static capitalize_Words(str) {
-    return str.replace(/\w\S*/g, function (txt) {
+    return str.replace(/\w\S*/g, function(txt) {
       return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     });
   }
@@ -330,103 +452,5 @@ module.exports = class MusicTriviaCommand extends Command {
       [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
-  }
-
-  async run(message, { numberOfSongs, playlist }) {
-    // check if user is in a voice channel
-    let voiceChannel = message.member.voice.channel;
-    if (!voiceChannel) {
-      await message.reply(':no_entry: Please join a voice channel and try again!');
-      return;
-    }
-    if (message.guild.musicData.isPlaying === true)
-      return message.channel.send(':x: A quiz or a song is already running!');
-
-
-    await spotifyClient.login(spotifyClientId, spotifySecret);
-    const playlistRegex = /\/playlist\/(.+)\?/;
-    playlist = playlist.match(playlistRegex);
-    if (!playlist) {
-      await message.reply('Invalid playlist!');
-      return;
-    } else {
-      playlist = playlist[1];
-      await message.reply('Collecting songs...');
-    }
-    message.guild.musicData.isPlaying = true;
-    message.guild.triviaData.isTriviaRunning = true;
-    message.guild.triviaData.triviaQueue = [];
-    const spotifyPlaylist = await spotifyClient.playlists.get(playlist);
-    let tempTracks = await spotifyPlaylist.getTracks({ offset: 0, market: spotifyMarket });
-    let trackItems = tempTracks.items;
-    if (tempTracks.total > tempTracks.limit) {
-      while (trackItems.length < tempTracks.total) {
-        tempTracks = await spotifyPlaylist.getTracks({ offset: trackItems.length });
-        trackItems = trackItems.concat(tempTracks.items);
-      }
-    }
-
-    MusicTriviaCommand.shuffle(trackItems);
-    let songMap = new Map();
-    let numberOfSkips = 0;
-    for (let track of trackItems) {
-      track = track.track;
-      if (!track.id || songMap.has(track.id) || track.artists[0].name === null || track.name === null) {
-        continue;
-      }
-      if (track.previewUrl === null) {
-        //Try to get preview url via spotify-url-info
-        let url = await getPreview(track.externalUrls.spotify);
-        //console.log(url);
-        if (!url) {
-          numberOfSkips++;
-          continue;
-        }
-        track.previewUrl = url.audio;
-      }
-
-      let imageLink = track.album.images[0].url;
-      const song = {
-        url: track.previewUrl,
-        singer: track.artists[0].name,
-        title: track.name,
-        image: imageLink,
-        voiceChannel
-      };
-      songMap.set(track.id, song);
-      if (songMap.size == numberOfSongs) {
-        break;
-      }
-    }
-
-    console.log('Had to skip ' + numberOfSkips + ' songs because of missing previewURL');
-
-    if (songMap.size < numberOfSongs) {
-      message.guild.musicData.isPlaying = false;
-      message.guild.triviaData.isTriviaRunning = false;
-      message.guild.triviaData.triviaQueue = [];
-      return message.reply('Couldnt get enough tracks with preview, sorey');
-    }
-    const infoEmbed = new MessageEmbed()
-      .setColor('#44f1e1')
-      .setTitle(':notes: Starting Music Quiz!')
-      .setDescription(
-        `:notes: Get ready! There are ${numberOfSongs} songs, you have 30 seconds to guess either the singer/band or the name of the song. Good luck!
-      You can end the trivia at any point by using the ${prefix}end-trivia command!`
-      );
-    await message.channel.send(infoEmbed);
-    message.guild.triviaData.triviaQueue = Array.from(songMap.values());
-    const channelInfo = Array.from(
-      message.member.voice.channel.members.entries()
-    );
-    channelInfo.forEach(user => {
-      if (user[1].user.bot) return;
-      message.guild.triviaData.triviaScore.set(user[1].user.toString(), 0);
-    });
-    await MusicTriviaCommand.playQuizSong(
-      message.guild.triviaData.triviaQueue,
-      message,
-      [1, numberOfSongs]
-    );
   }
 };
