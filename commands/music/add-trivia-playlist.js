@@ -51,11 +51,16 @@ module.exports = class ListTriviaPlaylistsCommand extends Command {
       return;
     }
 
+    let already_available = '';
+    if (playlists_json.playlists.find(o => o.name === name)) {
+      already_available = '**⚠It seems like this playlist already is in the "Good trivia playlists" list**\n\n';
+    }
+
     const confirmationEmbed = new MessageEmbed()
       .setColor('#44f1e1')
       .setTitle('Do you really want to add this playlist?')
       .setDescription(
-        `[${name}](${link})\n\`Song count: ${length}\`\n\nConfirm by reacting to this message`
+        `${already_available}[${name}](${link})\n\`Song count: ${length}\`\n\nConfirm by reacting to this message`
       );
     let confirmationMessage;
 
