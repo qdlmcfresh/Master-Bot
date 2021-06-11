@@ -92,7 +92,6 @@ module.exports = class ListTriviaPlaylistsCommand extends Command {
       description = '';
     }
     description += helpMessage;
-    playlistsEmbeds.push(description);
 
     helpMessage = `\n\n\*\*Start a music trivia with a randomly selected playlist:\*\*\n${prefix}music-trivia \*numberOfSongs\* \*random\*`;
     if (description.length + helpMessage.length > 2048) {
