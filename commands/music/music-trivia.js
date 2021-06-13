@@ -110,6 +110,10 @@ module.exports = class MusicTriviaCommand extends Command {
       if (track.previewUrl === null) {
         //Try to get preview url via spotify-url-info
         let url = await getPreview(track.externalUrls.spotify);
+        if (url.audio === null) {
+          console.log(`No preview ULR for ${track.artists[0].name} - ${track.name}`);
+          continue;
+        }
         track.previewUrl = url.audio;
       }
 
